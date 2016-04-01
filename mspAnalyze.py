@@ -14,18 +14,22 @@ import mspScan as msp
 
 
 def get_xmcd(scandata):
-	scan_plus	= scandata[scandata["Magnet Field"]<=0] 
-	scan_minus 	= scandata[scandata["Magnet Field"]>0]
+	if "Magnet Field" in scandata.columns:
+		scan_plus	= scandata[scandata["Magnet Field"]<=0] 
+		scan_minus 	= scandata[scandata["Magnet Field"]>0]
+	else:
+		scan_plus	= scandata 
+		scan_minus	= scandata 
+
 	xas_plus	= scan_plus ["I_Norm0"].values 
 	xas_minus	= scan_minus["I_Norm0"].values
-	
+	print xas_plus
 	if xas_plus.shape != xas_minus.shape:
 		print ("No xas_plus and xas_minus not equal. Using xas_plus. Shapes : {0}, {1}".format(xas_plus.shape, xas_minus.shape) )
 		xas_minus = xas_plus
 
-	
 
-	xas 		=  (xas_plus + xas_minus)/2
+	xas 		=   (xas_plus + xas_minus)/2
 	xmcd		=  -(xas_plus - xas_minus)
 	energy		= scan_plus["Energy"].values
 
@@ -187,24 +191,26 @@ def exportCombiView(xmcd_frame_group, keys ,groupColumns, filenamePOS, filenameX
 	fileXMCD.close()
 
 
-def plot_xmcd(xmcd_data, ax1=None, ax2=None, label = None, legend='full'):
+def plot_xmcd(xmcd_data, ax1=None, ax2=None, label = None, legend='full', color=0):
 
+	xmcdColors = ('red', 'rosybrown', 'lightcoral', 'darkred')
+	xasColors  = ('green', 'blue', 'purple', 'orchid', 'hotpink')
 	if legend == 'short':
 		legend_label = str(label) # '%5.1f'%label[0] +' '+ '%5.1f'%label[1]
-		if not ax2 is None: ax2.plot(xmcd_data["Energy"], xmcd_data["XMCD"], 	linewidth = 2, color = 'red')
-		if not ax1 is None: ax1.plot(xmcd_data["Energy"], xmcd_data["XAS" ] , 	linewidth = 2 ,color = 'blue')
+		if not ax2 is None: ax2.plot(xmcd_data["Energy"], xmcd_data["XMCD"], 	linewidth = 2, color = xmcdColors[color])
+		if not ax1 is None: ax1.plot(xmcd_data["Energy"], xmcd_data["XAS" ] , 	linewidth = 2 ,color = xasColors[color])
 
 		bbox_props = dict(boxstyle="round", fc="w", ec="0.5", alpha=0.7)
-		if not ax2 is None: ax2.text(0.9, 0.9, legend_label, transform=ax2.transAxes, fontsize=8, verticalalignment='top', horizontalalignment='right', bbox=bbox_props)
-		elif not ax1 is None: ax1.text(0.9, 0.9, legend_label, transform=ax1.transAxes, fontsize=8, verticalalignment='top', horizontalalignment='right', bbox=bbox_props)
+		if not ax2 is None: ax2.text(0.9, 0.1, legend_label, transform=ax2.transAxes, fontsize=8, verticalalignment='top', horizontalalignment='right', bbox=bbox_props)
+		elif not ax1 is None: ax1.text(0.9, 0.1, legend_label, transform=ax1.transAxes, fontsize=8, verticalalignment='top', horizontalalignment='right', bbox=bbox_props)
 
 		
 	elif legend == 'full' or True:
 		legend_label = '%5.3f'%label[0] +' '+ '%5.3f'%label[1]
-		if not ax2 is None: ax2.plot(xmcd_data["Energy"], xmcd_data["XMCD"], 		linewidth = 2, color = 'red',  label = "XMCD " + str(legend_label))
-		if not ax2 is None: ax2.plot([], [] , 						linewidth = 2 ,color = 'blue', label = "XAS  " + str(legend_label))
-		if not ax1 is None: ax1.plot(xmcd_data["Energy"], xmcd_data["XAS" ] , 		linewidth = 2 ,color = 'blue', label = "XAS  " + str(legend_label))
-		if not ax1 is None: ax1.plot([], [] , 						linewidth = 2 ,color = 'red',  label = "XCMD " + str(legend_label))
+		if not ax2 is None: ax2.plot(xmcd_data["Energy"], xmcd_data["XMCD"], 		linewidth = 2, color = xmcdColors[color], label = "XMCD " + str(legend_label))
+		if not ax2 is None: ax2.plot([], [] , 						linewidth = 2, color = xasColors[color],  label = "XAS  " + str(legend_label))
+		if not ax1 is None: ax1.plot(xmcd_data["Energy"], xmcd_data["XAS" ] , 		linewidth = 2, color = xasColors[color],  label = "XAS  " + str(legend_label))
+		if not ax1 is None: ax1.plot([], [] , 						linewidth = 2, color = xmcdColors[color], label = "XCMD " + str(legend_label))
 		if not ax2 is None: ax2.legend(fancybox=True, framealpha=0.7, fontsize=8)
 		
 
