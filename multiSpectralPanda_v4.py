@@ -24,11 +24,20 @@ import itertools
 def sort_zy_lines(a,b):
 	if hasattr(a, '__iter__') and hasattr(b, '__iter__'):
 		if (len(a)>1) & (len(b)>1) :
-			if 	a[0]>b[0]: return  1
+			if	len(a) <1: return  0
+			elif 	a[0]>b[0]: return  1
 			elif	a[0]<b[0]: return -1
-			elif	a[1]<b[1]: return  1
-			elif	a[1]>b[1]: return -1
+			elif	len(a) <2: return  0
+			elif	a[1]>b[1]: return  1
+			elif	a[1]<b[1]: return -1
+			elif	len(a) <3: return  0
+			elif	a[2]>b[2]: return  1
+			elif	a[2]<b[2]: return -1	
+			elif	len(a) <4: return  0
+			elif	a[3]>b[3]: return  1
+			elif	a[3]<b[3]: return -1	
 			else: return 0
+
 	# default:
 	if 	a>b: return  1
 	elif	a<b: return -1
@@ -128,8 +137,8 @@ def ax_setup(x_plotnumber, y_plotnumber):
 			if x_plotnumber * y_plotnumber >=0:
 				axs = list()
 				for i in range( x_plotnumber * y_plotnumber):
-					a =  SubplotHost(fig, 1, 1,1)
-#					a =  SubplotHost(fig, x_plotnumber, y_plotnumber, i+1)
+#					a =  SubplotHost(fig, 1, 1,1)
+					a =  SubplotHost(fig, x_plotnumber, y_plotnumber, i+1)
 					axs.append(a)
 			else:
 				axs = [axs,]
@@ -144,8 +153,8 @@ def plot_mh_frame(mh_frame, group_columns, x_plotnumber, y_plotnumber ):
 			mh_frame_group = mh_frame.groupby(group_columns)
 
 			keys = mh_frame_group.groups.keys()
-			print "Keys for plotting", keys
 			keys.sort(sort_zy_lines)
+			print "Keys for plotting", keys
 			for g, ax1 in zip(keys, axs[::-1]):
 				mh_data_atloc = mh_frame_group.get_group(g)
 				mh_data_atloc = mh_data_atloc.groupby("Element")
@@ -179,8 +188,8 @@ def save_txt(mh_data, label):
 def save_mh_frame(mh_frame, group_columns):
 			mh_frame_group = mh_frame.groupby(group_columns)
 			keys = mh_frame_group.groups.keys()
-			print "Keys for plotting", keys
 			keys.sort(sort_zy_lines)
+			print "Keys for plotting", keys
 			for g in keys:
 				mh_data_atloc = mh_frame_group.get_group(g)
 				mh_data_atloc = mh_data_atloc.groupby("Element")
@@ -200,8 +209,8 @@ def treat_xmcd(scan_groups, element):
 		for g in keys:
 
 			xmcd_data = mspA.get_xmcd(scan_groups.get_group(g)[(scan_groups.get_group(g)["Energy"]>element.E_lower) & (scan_groups.get_group(g)["Energy"]<element.E_upper)])
-#			xmcd_data = mspA.removeBG(xmcd_data, pre_edge = element.pre_edge, post_edge= None)
-			xmcd_data = mspA.removeV_BG(xmcd_data, pre_edge = element.pre_edge, post_edge= None)
+			xmcd_data = mspA.removeBG(xmcd_data, pre_edge = element.pre_edge, post_edge= None)
+#			xmcd_data = mspA.removeV_BG(xmcd_data, pre_edge = element.pre_edge, post_edge= None)
 
 			if not hasattr(g,'__iter__'):
 				g =[g,]
@@ -214,11 +223,28 @@ def treat_xmcd(scan_groups, element):
 		return(xmcd_frame)
 
 
-def plot_xmcd_frame(xmcd_frame, group_columns, x_plotnumber, y_plotnumber, mode="XMCD" ):
+def get_labels(scandata_f, keys, group_columns, group_column_labels=None):
+	labels = dict()
+	if group_column_labels is None:
+		group_column_labels=group_columns
+	for key in keys:
+		l = ""
+		condition = True
+		for k, gc in zip(key,group_columns) :
+			condition = condition & (scandata_f[gc]==k) 
+#		l += ("UP:" +str(scandata_f[condition][group_coloumn_labels].mean().round(4)))
+#		l += (" DN:"+str(scandata_f[condition][group_coloumn_labels].mean().round(4)))
+		for gc_label in group_column_labels:
+			l += (gc_label +str(scandata_f[condition][gc_label].mean().round(4)) +' ' )
+	
+		labels[key] = l	
+	return labels
+
+def plot_xmcd_frame(xmcd_frame, group_columns, x_plotnumber, y_plotnumber, labels = 'auto', mode="XMCD" ):
 
 			keys = xmcd_frame_group.groups.keys()
-			print "Keys for plotting", keys
 			keys.sort(sort_zy_lines)
+			print "Keys for plotting", keys
 			
 			fig, axs1 = ax_setup(x_plotnumber, y_plotnumber)
 
@@ -226,9 +252,16 @@ def plot_xmcd_frame(xmcd_frame, group_columns, x_plotnumber, y_plotnumber, mode=
 			legendtype = "short"
 			once = True
 
-			if mode == "XAS":
+			if (mode == "XAS") & False:  # Prints only one graph!
 				for g in keys:
-					ax1,ax2   = mspA.plot_xmcd(xmcd_frame_group.get_group(g) ,ax1 = axs1[0] ,ax2=None, label = g, legend = legendtype)
+					if labels is None:
+						l = None
+					elif labels == 'auto':
+						l = g
+					else:
+						l = labels[g]
+					
+					ax1,ax2   = mspA.plot_xmcd(xmcd_frame_group.get_group(g) ,ax1 = axs1[0] ,ax2=None, label = l, legend = legendtype)
 					print "AX1", ax1
 					if once:
 						
@@ -239,26 +272,40 @@ def plot_xmcd_frame(xmcd_frame, group_columns, x_plotnumber, y_plotnumber, mode=
 					
 				axs2 = axs1
 
-			if (mode == "XAS") & False:
+			if (mode == "XAS") :
+				i = 0
 				for g, ax1 in zip(keys, itertools.cycle(axs1[::-1])):
-					ax1,ax2   = mspA.plot_xmcd(xmcd_frame_group.get_group(g) ,ax1 = ax1 ,ax2=None, label = g, legend = legendtype)
+					c = int(i/len(axs1[::-1]))
+					i+=1
+					
+					if labels is None:
+						l = None
+					elif labels == 'auto':
+						l = g
+					else:
+						l = labels[g]
+					ax1,ax2   = mspA.plot_xmcd(xmcd_frame_group.get_group(g) ,ax1 = ax1 ,ax2=None, label = l, legend = legendtype, color=c)
 					print "AX1", ax1
+				for ax1 in (axs1[::-1]):
 					fig.add_subplot(ax1)
 #					ax1.set_ylim(-.65,1.3)		# normalized
 #					ax1.set_ylim(0,0.1)		# 
 					
 				axs2 = axs1
 			if mode == "XMCD":
-#				aux_trans = mtransforms.Affine2D().scale(1.,2)
-				aux_trans = mtransforms.Affine2D().scale(1.,1)
+				aux_trans = mtransforms.Affine2D().scale(1.,3)
+#				aux_trans = mtransforms.Affine2D().scale(1.,1)
 				axs2  = [ax1.twin(aux_trans) for ax1 in axs1]
 				for ax2 in axs2: ax2.set_viewlim_mode("transform")
-		
+				i=0
 				for g, ax1, ax2 in zip(keys, itertools.cycle(axs1[::-1]), itertools.cycle(axs2[::-1])):
-					ax1,ax2   = mspA.plot_xmcd(xmcd_frame_group.get_group(g) ,ax1,ax2, label = g ,legend = legendtype)
+					c = int(i/len(axs1[::-1]))
+					i+=1
+		
+					ax1,ax2   = mspA.plot_xmcd(xmcd_frame_group.get_group(g) ,ax1,ax2, label = g ,legend = legendtype, color=c)
 					fig.add_subplot(ax1)
 #					ax1.set_ylim(-.65,1.3)		# normalized
-					ax1.set_ylim(-.65,3)
+#					ax1.set_ylim(-.65,3)
 
 		#			ax1.set_ylim(0.35,0.5)		# Fe (raw)
 		#			ax2.set_ylim(-0.005,0.012)	# Fe (raw)
@@ -285,8 +332,8 @@ def get_plot_dimensions(scandata_f, group_columns):
 				x_plotnumber		= int(math.ceil(math.sqrt(len(scandata_f[group_columns[0]].unique()))))
 				y_plotnumber		= int(math.ceil(math.sqrt(len(scandata_f[group_columns[0]].unique()))))
 			else:
-				x_plotnumber		= len(scandata_f[group_columns[0]].unique())
-				y_plotnumber		= len(scandata_f[group_columns[1]].unique())
+				x_plotnumber		= len(scandata_f[group_columns[-2]].unique())
+				y_plotnumber		= len(scandata_f[group_columns[-1]].unique())
 			
 			print "Plot dimensions: ", x_plotnumber,y_plotnumber
 			return x_plotnumber, y_plotnumber
@@ -331,7 +378,7 @@ else:
 if os.path.isfile(filenames[0]):
 	
 	# Loading Scan
-	scandata_f = msp.read_scans(filenames, datacounter = "Counter 1")
+	scandata_f = msp.read_scans(filenames, datacounter = "Channeltron", reference_counter='Counter 2')
 
 # 	Group 1: 
 #	all the groups which get an own subplot
@@ -340,7 +387,9 @@ if os.path.isfile(filenames[0]):
 
 #	sg = scandata_f.groupby(["filename_rump",]) 
 #	group_columns = ["Z","Theta"]
-	group_columns = ["Z", ]
+	group_columns_legend = ["Z", "X"]
+	group_columns = ["Z", "X" ]
+
 #	group_columns = ["filename_rump"]
 
 #	Z_conv 		= lambda z: z-70.9
@@ -449,7 +498,7 @@ if os.path.isfile(filenames[0]):
 
 
 # 	SET ELEMENT HERE TO DEFINE ENERGY RANGE
-		element = element_O
+		element = elementAll
 
 		xmcd_frame = treat_xmcd(sg, element)
 		print "xmcd_frame"
@@ -463,8 +512,14 @@ if os.path.isfile(filenames[0]):
 	#		xmcd_frame = average_xmcd(xmcd_frame, group_columns)
 			print "The frame", xmcd_frame
 			x_plotnumber, y_plotnumber	=	get_plot_dimensions(scandata_f, group_columns)
+
+			# Labels
+			keys = xmcd_frame_group.groups.keys()
+			labels = get_labels(scandata_f, keys, group_columns)
+			
 #			plot_xmcd_frame(xmcd_frame, group_columns, x_plotnumber , y_plotnumber, mode=mode)
-			plot_xmcd_frame(xmcd_frame, group_columns, x_plotnumber , y_plotnumber, mode=mode)
+#			plot_xmcd_frame(xmcd_frame, group_columns, x_plotnumber , y_plotnumber, labels='auto', mode=mode)
+			plot_xmcd_frame(xmcd_frame, group_columns, x_plotnumber , y_plotnumber, labels=labels, mode=mode)
 
 	
 		plot_mapstyle = True
@@ -571,7 +626,7 @@ if os.path.isfile(filenames[0]):
 #					"m" : m,
 #					"Y" : y,
 #					"Z" : z})
-#	plt.figure()
+#	plt.figure()for ne
 #	for i, group in extract.groupby(('Z','Y')):
 #		group.plot(x='T', y='m', c=scipy.random.rand(3,1), label=str(i))
 #	plt.legend()
